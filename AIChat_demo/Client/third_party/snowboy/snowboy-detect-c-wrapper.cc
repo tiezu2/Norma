@@ -1,82 +1,43 @@
-// snowboy-detect-c-wrapper.cc
-
-// Copyright 2017  KITT.AI (author: Guoguo Chen)
-
-#include <assert.h>
-
+// 桩实现：用音量检测代替 snowboy 唤醒词
 #include "include/snowboy-detect-c-wrapper.h"
-#include "include/snowboy-detect.h"
+#include <cstring>
+#include <cmath>
+#include <cstdio>
+
+struct SnowboyDetect {
+    int dummy;
+};
 
 extern "C" {
-  SnowboyDetect* SnowboyDetectConstructor(const char* const resource_filename,
-                                          const char* const model_str) {
-    return reinterpret_cast<SnowboyDetect*>(
-        new snowboy::SnowboyDetect(resource_filename, model_str));
-  }
 
-  bool SnowboyDetectReset(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(detector)->Reset();
-  }
-
-  int SnowboyDetectRunDetection(SnowboyDetect* detector,
-                                const int16_t* const data,
-                                const int array_length, bool is_end) {
-    assert(detector != NULL);
-    assert(data != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(
-        detector)->RunDetection(data, array_length, is_end);
-  }
-
-  void SnowboyDetectSetSensitivity(SnowboyDetect* detector,
-                                   const char* const sensitivity_str) {
-    assert(detector != NULL);
-    reinterpret_cast<snowboy::SnowboyDetect*>(
-        detector)->SetSensitivity(sensitivity_str);
-  }
-
-  void SnowboyDetectSetAudioGain(SnowboyDetect* detector,
-                                 const float audio_gain) {
-    assert(detector != NULL);
-    reinterpret_cast<snowboy::SnowboyDetect*>(
-        detector)->SetAudioGain(audio_gain);
-  }
-
-  void SnowboyDetectUpdateModel(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    reinterpret_cast<snowboy::SnowboyDetect*>(detector)->UpdateModel();
-  }
-
-  void SnowboyDetectApplyFrontend(SnowboyDetect* detector,
-                                  const bool apply_frontend) {
-    assert(detector != NULL);
-    reinterpret_cast<snowboy::SnowboyDetect*>(
-        detector)->ApplyFrontend(apply_frontend);
-  }
-
-  int SnowboyDetectNumHotwords(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(detector)->NumHotwords();
-  }
-
-  int SnowboyDetectSampleRate(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(detector)->SampleRate();
-  }
-
-  int SnowboyDetectNumChannels(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(detector)->NumChannels();
-  }
-
-  int SnowboyDetectBitsPerSample(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    return reinterpret_cast<snowboy::SnowboyDetect*>(detector)->BitsPerSample();
-  }
-
-  void SnowboyDetectDestructor(SnowboyDetect* detector) {
-    assert(detector != NULL);
-    delete reinterpret_cast<snowboy::SnowboyDetect*>(detector);
-    detector = NULL;
-  }
+SnowboyDetect* SnowboyDetectConstructor(const char* resource_filename, const char* model_str) {
+    (void)resource_filename;
+    (void)model_str;
+    printf("[STUB] SnowboyDetectConstructor called\n");
+    return new SnowboyDetect();
 }
+
+bool SnowboyDetectReset(SnowboyDetect* detector) { (void)detector; return true; }
+
+int SnowboyDetectRunDetection(SnowboyDetect* detector, const int16_t* data, int array_length, bool is_end) {
+    (void)detector; (void)is_end;
+    if (!data || array_length <= 0) return 0;
+    double sum = 0.0;
+    for (int i = 0; i < array_length; i++) {
+        double v = (double)data[i];
+        sum += v * v;
+    }
+    double rms = sqrt(sum / array_length);
+    if (rms > 500.0) {
+        printf("[STUB] Wake by volume, RMS=%.1f\n", rms);
+        return 1;
+    }
+    return 0;
+}
+
+void SnowboyDetectSetSensitivity(SnowboyDetect* d, const char* s) { (void)d; (void)s; }
+void SnowboyDetectSetAudioGain(SnowboyDetect* d, float g) { (void)d; (void)g; }
+void SnowboyDetectApplyFrontend(SnowboyDetect* d, bool apply) { (void)d; (void)apply; }
+void SnowboyDetectDestructor(SnowboyDetect* d) { delete d; }
+
+} // extern "C"

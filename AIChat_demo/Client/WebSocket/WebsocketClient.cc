@@ -1,3 +1,5 @@
+#include <netdb.h>
+#include <arpa/inet.h>
 #include "../WebSocket/WebsocketClient.h"
 #include "../Utils/user_log.h"
 #include <websocketpp/common/asio.hpp>
@@ -20,7 +22,6 @@ WebSocketClient::WebSocketClient(const std::string& address, int port, const std
     headers_["Authorization"] = "Bearer " + token;
     headers_["Device-Id"] = deviceId;
     headers_["Protocol-Version"] = std::to_string(protocolVersion);
-
 }
 
 WebSocketClient::~WebSocketClient() {
@@ -43,18 +44,29 @@ void WebSocketClient::Connect() {
         USER_LOG_INFO("Already connected.");
         return;
     }
+
+    USER_LOG_INFO("[DIAG] Connect() called, uri_=%s", uri_.c_str());
+
     websocketpp::lib::error_code ec;
-    client_t::connection_ptr con = ws_client_.get_connection(uri_, ec);
+    std::string connect_uri = uri_;
+
+    client_t::connection_ptr con = ws_client_.get_connection(connect_uri, ec);
     if (ec) {
-        USER_LOG_ERROR("Could not create connection: %s", ec.message().c_str());
+        USER_LOG_ERROR("[DIAG] get_connection failed: %s", ec.message().c_str());
         return;
     }
+    USER_LOG_INFO("[DIAG] get_connection OK, uri=%s", connect_uri.c_str());
 
     for (const auto& header : headers_) {
         con->append_header(header.first, header.second);
     }
+    USER_LOG_INFO("[DIAG] headers appended: %d headers", (int)headers_.size());
+
     connection_hdl_ = con->get_handle();
+    USER_LOG_INFO("[DIAG] calling ws_client_.connect(con)...");
+
     ws_client_.connect(con);
+    USER_LOG_INFO("[DIAG] connect() returned (async, awaiting on_open/on_fail)");
 }
 
 void WebSocketClient::Terminate() {
@@ -76,7 +88,6 @@ void WebSocketClient::Close() {
     } catch (const std::exception& e) {
         USER_LOG_ERROR("Error closing connection: %s", e.what());
     }
-    
 }
 
 // 发送文本消息

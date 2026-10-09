@@ -16,8 +16,8 @@ class TextHandler:
         if data.get('type') == 'hello':
             audio_params = data.get('audio_params', {})
             logger.info(f"Received hello message with audio params: {audio_params}")
-            api_key = data.get('api_key', None)
-            global_settings.Set_API_Key(api_key)
+            # api_key = data.get('api_key', None)
+            # global_settings.Set_API_Key(api_key)  # 忽略客户端 key，强制用 settings.py 里配置的 key
             # 暂时没设定可变的音频参数列表, 所以client发送过来的音频参数不会被使用
             # sample_rate = audio_params.get('sample_rate', AudioProcessor.sample_rate)
             # channels = audio_params.get('channels', AudioProcessor.CHANNELS)

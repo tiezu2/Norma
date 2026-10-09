@@ -1,3 +1,20 @@
 # *.o
 .vscode/
 
+
+# ===== 追加：构建产物与本地环境（勿提交）=====
+__pycache__/
+*.py[cod]
+*.bak
+*.save
+*.orig
+*.deb
+*.o
+*.a
+AIChat_demo/Server/venv/
+AIChat_demo/Server/logs/
+DeskBot_demo/build_arm/
+AIChat_demo/Server/config/local_secrets.py
+
+# 本地用户配置（含密钥）
+DeskBot_demo/utils/system_para.conf

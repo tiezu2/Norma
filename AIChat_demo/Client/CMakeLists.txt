@@ -1,3 +1,4 @@
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../DeskBot_demo/cmake")
 # Minimum CMake version requirement
 cmake_minimum_required(VERSION 3.10)
 
@@ -15,7 +16,11 @@ else()
     message(STATUS "Building for x86 native architecture.")
 endif()
 
+
 # Project name and language
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../DeskBot_demo/cmake")
+
 project(AIChatClient)
 
 # Set C++ standard
@@ -76,6 +81,7 @@ target_link_libraries(AIChatCore
     ${JSONCPP_LIBRARIES}
     ${WEBSOCKETPP_LIBRARIES}
     snowboy-detect-c-wrapper
+    snowboy
 )
 
 # Add the executable and link it to the core library

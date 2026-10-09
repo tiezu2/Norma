@@ -19,6 +19,8 @@ if(TARGET_ARM)
     set(ENV{PKG_CONFIG_PATH} "${CMAKE_SYSROOT}/usr/lib/pkgconfig")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 project(DeskBot)
 
 set(CMAKE_C_STANDARD 99)#C99 # lvgl officially support C99 and above
