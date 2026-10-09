@@ -3,6 +3,7 @@ from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse
 from dashscope.audio.tts_v2 import *
 import time
 from tools.logger import logger
+from config.settings import DASHSCOPE_WORKSPACE
 
 
 class TTSModel:
@@ -15,6 +16,7 @@ class TTSModel:
             model="cosyvoice-v1",
             voice="longxiaochun",
             format=AudioFormat.PCM_16000HZ_MONO_16BIT,
+            workspace=DASHSCOPE_WORKSPACE or None,
             callback=self.callback
         )
 
@@ -51,13 +53,11 @@ class TTSModel:
             model="cosyvoice-v1",
             voice="longxiaochun",
             format=AudioFormat.PCM_16000HZ_MONO_16BIT,
+            workspace=DASHSCOPE_WORKSPACE or None,
             callback=self.callback
         )
-        try:
-            self.synthesizer.streaming_call('') # 先提前打开ws连接
-            time.sleep(0.1)
-        except Exception as e:
-            return False
+        # 专属网关拒绝空文本预连接(InvalidParameter), 已去掉;
+        # 连接会在第一次 streaming_call(文本)时自动建立
 
     def tts_stream_close(self):
         self.synthesizer.streaming_complete()
@@ -69,7 +69,7 @@ class TTSModel:
         :param: text_chunk: 文本片
         :return: 合成是否成功'''
 
-        if text_chunk:
+        if text_chunk and text_chunk.strip():
             try:
                 self.synthesizer.streaming_call(text_chunk)
             except Exception as e:

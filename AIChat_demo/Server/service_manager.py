@@ -7,6 +7,7 @@ from services.intent_service import IntentService
 from tools.audio_processor import AudioProcessor
 from threads.task_manager import TaskManager
 from tools.logger import logger
+from config.settings import global_settings
 import queue
 import threading
 import json
@@ -27,6 +28,7 @@ class ServiceManager:
         self.ws_send_queue = queue.Queue()  # 用于存储ws需要发送的数据
 
         self.stop_event = threading.Event() # 用于控制线程停止
+        self._tts_pcm_buffer = b''  # TTS PCM 分片缓冲
 
         self.task_manager = TaskManager()   # 短生命周期的任务管理器
 
@@ -56,11 +58,23 @@ class ServiceManager:
     def _tts_on_data(self, data):
         """
         TTS 生成回调函数
-        :param data: 生成的音频数据
+        :param data: 生成的音频数据 (PCM 16bit bytes)
         """
-        # 将生成的音频数据放入语音队列
-        self.audio_queue.put(data)
-        # logger.info(f"Received TTS data: {len(data)} bytes")
+        try:
+            # 累积分片，攒够一帧(640样本=1280字节)再编码，避免喂给 Opus 非整帧数据
+            self._tts_pcm_buffer += bytes(data)
+            frame_bytes = self.audio_processor.frame_size * 2
+            while len(self._tts_pcm_buffer) >= frame_bytes:
+                frame = self._tts_pcm_buffer[:frame_bytes]
+                self._tts_pcm_buffer = self._tts_pcm_buffer[frame_bytes:]
+                opus_data = self.audio_processor.encode_audio(frame)
+                if not opus_data:
+                    continue
+                packed = self.audio_processor.pack_bin_frame(
+                    global_settings.protocol_version, 0, opus_data)
+                self.ws_send_queue.put(packed)
+        except Exception as e:
+            logger.error(f"TTS audio send failed: {e}")
 
     def _tts_on_complete(self):
         msg = {
@@ -114,8 +128,9 @@ class ServiceManager:
         # 4.直接TTS生成
         for text_chunk in answers:
             print(text_chunk, end="", flush=True)
-            # 调用 TTS 服务进行语音合成
-            self.tts_service.tts_speech_stream(text_chunk)
+            # 跳过空白chunk, 避免云端报 InvalidParameter
+            if text_chunk and text_chunk.strip():
+                self.tts_service.tts_speech_stream(text_chunk)
         print()  # 换行
         # 关闭 TTS 流
         self.tts_service.tts_close()

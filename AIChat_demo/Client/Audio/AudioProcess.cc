@@ -1,3 +1,4 @@
+#include <cstring>
 #include "./AudioProcess.h"
 #include "../Utils/user_log.h"
 #include <iostream>
@@ -216,9 +217,27 @@ bool AudioProcess::startPlaying() {
 
     // 配置音频流参数
     PaStreamParameters outputParameters;
-    outputParameters.device = Pa_GetDefaultOutputDevice();
+    outputParameters.device = paNoDevice;
+    // 显式定位真实 codec 设备 (hw:0,0 / rv-acodec)，绕开 default(dmix) 黑洞
+    int devCount = Pa_GetDeviceCount();
+    for (int i = 0; i < devCount; i++) {
+        const PaDeviceInfo* info = Pa_GetDeviceInfo(i);
+        if (info && info->maxOutputChannels > 0 && info->name) {
+            if (strstr(info->name, "hw:") ||
+                strstr(info->name, "rv-acodec") ||
+                strstr(info->name, "rvacodec")) {
+                outputParameters.device = i;
+                USER_LOG_INFO("Using output device [%d] = %s", i, info->name);
+                break;
+            }
+        }
+    }
     if (outputParameters.device == paNoDevice) {
-        USER_LOG_ERROR("No default output device found.");
+        outputParameters.device = Pa_GetDefaultOutputDevice();
+        USER_LOG_WARN("No hw: device found, fallback to default");
+    }
+    if (outputParameters.device == paNoDevice) {
+        USER_LOG_ERROR("No output device found.");
         Pa_Terminate();
         return false;
     }
