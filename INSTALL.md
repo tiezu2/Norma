@@ -131,7 +131,7 @@ sudo apt update
 ```bash
 sudo apt update
 sudo apt install -y open-vm-tools open-vm-tools-desktop
-sudo reboot
+立即重启虚拟机
 ```
 
 重启后支持：Windows 与 Ubuntu 之间复制粘贴、拖拽文件、分辨率自动适配。
