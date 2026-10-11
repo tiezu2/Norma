@@ -380,7 +380,7 @@ vim config/local_secrets.py
 python -c "from config.settings import global_settings, DASHSCOPE_API_KEY; print('key len =', len(DASHSCOPE_API_KEY)); print('model =', global_settings.CHAT_MODEL)"
 ```
 
-`key len` 应为一个较大的数字（不是占位符那串），`model` 应输出 `qwen-turbo`。
+`key len` 应为一个较大的数字（不是占位符那串），`model` 应输出 `qwen-plus`。
 
 ---
 

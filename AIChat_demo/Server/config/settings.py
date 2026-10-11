@@ -15,8 +15,8 @@ class Settings:
     dashscope.base_http_api_url = DASHSCOPE_BASE_URL
 
     # 模型选择
-    INTENT_MODEL = "qwen-turbo"       # 专门用于意图识别
-    CHAT_MODEL = "qwen-turbo"         # 用于常规对话
+    INTENT_MODEL = "qwen-flash"       # 专门用于意图识别
+    CHAT_MODEL = "qwen-plus"         # 用于常规对话
 
     # device
     ASR_DEVICE = "cpu"                # ASR 模型使用的设备

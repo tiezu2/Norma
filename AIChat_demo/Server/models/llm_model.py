@@ -4,7 +4,7 @@ from tools.logger import logger
 from config.settings import DASHSCOPE_WORKSPACE
 
 class LLMModel:
-    def __init__(self, model_name: str = "qwen-turbo"):
+    def __init__(self, model_name: str = "qwen-plus"):
         self.model_name = model_name
         # 对话初始历史记录
         # 默认的是这个content
