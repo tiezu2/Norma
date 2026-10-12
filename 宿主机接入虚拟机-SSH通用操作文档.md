@@ -243,7 +243,7 @@ ssh -v VM_USER@VM_IP 2>&1 | grep -i -e "identity file" -e offering
 # ⑤ 看服务端日志（在虚拟机执行，信息最直接）
 sudo tail -50 /var/log/auth.log
 ```
-
+到此三步已完成，你已经可以 ssh 别名 直接进入了。以下各节是按需查阅的支撑内容，不是必做步骤
 ---
 
 ## 4. 第三步：写 SSH 别名（以后一条 `ssh 别名` 直接进）
