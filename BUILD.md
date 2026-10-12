@@ -26,10 +26,10 @@
 <仓库根>/SDK/rv1106-sdk/
 ```
 
-获取方式二选一：
+> ⚠️ **该 SDK 目录并不包含在本仓库中**（体积达数十 GB，未纳入版本管理）。
+> 首次编译前必须先自行获取，否则 §3 起的步骤无法执行。
 
-1. 本仓库已包含该目录 —— 直接使用；
-2. 从 Luckfox 官方 SDK（`LuckfoxTECH/luckfox-pico`）拉取，再把 Echo-Mate 的板级文件（见 §2）加入对应位置。
+获取方式：从 Luckfox 官方 SDK（`LuckfoxTECH/luckfox-pico`）拉取，再把 Echo-Mate 的板级文件（见 §2）加入对应位置（`<仓库根>/SDK/rv1106-sdk/`）。
 
 ---
 

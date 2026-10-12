@@ -15,7 +15,7 @@ conda create --prefix ./AIChatServerEnv python=3.10
 
 ``` sh
 conda activate ./AIChatServerEnv
-pip install -r ./requirments.txt
+pip install -r ./requirements.txt
 ```
 
 搭建完毕，直接运行即可了, access_token是Client端匹配的密码，aliyun_api_key是阿里云的API key，用于访问通义千问
