@@ -964,7 +964,11 @@
  *==================*/
 
 /*Use SDL to open window on PC and handle mouse and keyboard*/
-#define LV_USE_SDL 0
+/*LV_USE_SDL is decided by conf/dev_conf.h from LV_USE_SIMULATOR (included at the top of this file).
+  The #ifndef guard makes sure this default does not override it.*/
+#ifndef LV_USE_SDL
+    #define LV_USE_SDL 0
+#endif
 #if LV_USE_SDL
     #define LV_SDL_INCLUDE_PATH     <SDL2/SDL.h>
     #define LV_SDL_RENDER_MODE      LV_DISPLAY_RENDER_MODE_DIRECT   /*LV_DISPLAY_RENDER_MODE_DIRECT is recommended for best performance*/
@@ -994,7 +998,10 @@
 #endif
 
 /*Driver for /dev/fb*/
-#define LV_USE_LINUX_FBDEV 1
+/*Decided by conf/dev_conf.h from LV_USE_SIMULATOR - guarded so it is not overridden here.*/
+#ifndef LV_USE_LINUX_FBDEV
+    #define LV_USE_LINUX_FBDEV 1
+#endif
 #if LV_USE_LINUX_FBDEV
     #define LV_LINUX_FBDEV_BSD           0
     #define LV_LINUX_FBDEV_RENDER_MODE   LV_DISPLAY_RENDER_MODE_FULL
@@ -1030,7 +1037,10 @@
 #define LV_USE_TFT_ESPI         0
 
 /*Driver for evdev input devices*/
-#define LV_USE_EVDEV 1
+/*Decided by conf/dev_conf.h from LV_USE_SIMULATOR - guarded so it is not overridden here.*/
+#ifndef LV_USE_EVDEV
+    #define LV_USE_EVDEV 1
+#endif
 
 /*Driver for libinput input devices*/
 #define LV_USE_LIBINPUT    0

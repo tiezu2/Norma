@@ -18,11 +18,24 @@ conda activate ./AIChatServerEnv
 pip install -r ./requirements.txt
 ```
 
-搭建完毕，直接运行即可了, access_token是Client端匹配的密码，aliyun_api_key是阿里云的API key，用于访问通义千问
+### 启动
+
+搭建完毕，直接运行即可：
 
 ``` sh
-python ./main.py --access_token="123456" --aliyun_api_key="sk-your-api-key"
+python ./main.py
 ```
+
+**注意：服务端不解析任何命令行参数。** 下面两项都不通过命令行传入：
+
+| 配置 | 实际位置 | 默认值 |
+|---|---|---|
+| 访问令牌 `access_token` | `main.py` 中硬编码（第 24 行） | `123456` |
+| 阿里云 API Key | `config/local_secrets.py` 的 `DASHSCOPE_API_KEY` | 无，**必填** |
+
+因此 `python ./main.py --access_token="..." --aliyun_api_key="..."` 这种写法**是无效的** ——
+Python 会静默忽略这两个参数，鉴权仍按 `123456` 通过，直到真正发起对话才报 `apikey is required`。
+密钥配置步骤见仓库根目录 [`../../INSTALL.md`](../../INSTALL.md) 第八章。
 
 ### 文件目录介绍
 

@@ -15,8 +15,8 @@
 3. 安装 Ubuntu 20.04
 4. 配置 Ubuntu 基础环境
 5. 安装 Miniconda 与 Python 3.10
-6. 安装 Python 依赖
-7. 获取项目源码
+6. 获取项目源码
+7. 安装 Python 依赖
 8. 配置服务端
 9. 配置客户端
 10. PC 预览编译与运行
@@ -224,15 +224,67 @@ python --version
 
 ---
 
-## 六、安装 Python 依赖
+## 六、获取项目源码
 
-### 6.1 确保在 echo_env 环境
+### 6.1 安装 git-lfs
+
+```bash
+sudo apt install -y git-lfs
+git lfs install
+```
+
+### 6.2 克隆仓库
+
+> ⚠️ **目标目录必须写成 `~/Echo-Mate/Demo`** —— 本文档后续所有路径都基于它。
+
+```bash
+git clone https://github.com/tiezu2/Norma.git ~/Echo-Mate/Demo
+cd ~/Echo-Mate/Demo
+```
+
+### 6.3 拉取子模块
+
+```bash
+git submodule update --init --recursive
+```
+
+5 个子模块（自动从官方源拉取，约 900 MB）：
+
+| 路径 | 来源 |
+|---|---|
+| `AIChat_demo/Server/models/FunAudioLLM/SenseVoice` | github.com/FunAudioLLM/SenseVoice |
+| `.../iic/speech_fsmn_vad_zh-cn-16k-common-pytorch` | modelscope.cn |
+| `.../iic/SenseVoiceSmall` | modelscope.cn |
+| `DeskBot_demo/lvgl` | github.com/lvgl/lvgl（`release/v9.2`） |
+| `rkmpi_demos` | github.com/LuckfoxTECH/luckfox_pico_rkmpi_example |
+
+### 6.4 拉取 LFS 大文件
+
+```bash
+git lfs pull
+git submodule foreach --recursive 'git lfs pull'
+```
+
+### 6.5 验证项目结构
+
+```bash
+ls ~/Echo-Mate/Demo/
+ls ~/Echo-Mate/Demo/AIChat_demo/
+```
+
+应看到 `AIChat_demo/`、`DeskBot_demo/`、`yolov5_demo/`、`rkmpi_demos/` 等。
+
+---
+
+## 七、安装 Python 依赖
+
+### 7.1 确保在 echo_env 环境
 
 ```bash
 conda activate echo_env
 ```
 
-### 6.2 安装 CPU 版 PyTorch
+### 7.2 安装 CPU 版 PyTorch
 
 ```bash
 pip install torch torchvision torchaudio \
@@ -253,7 +305,7 @@ pip install torch torchvision torchaudio \
 python -c "import torch; print('torch', torch.__version__)"
 ```
 
-### 6.3 安装 PyOgg（源码编译）
+### 7.3 安装 PyOgg（源码编译）
 
 PyPI 上的 `pyogg` 不含 `OpusEncoder`，需要从源码编译。
 
@@ -274,7 +326,7 @@ python -c "from pyogg import OpusEncoder, OpusDecoder; print('PyOgg OK')"
 - `git clone` 卡住 → 换 `https://gitclone.com/github.com/TeamPyOgg/PyOgg.git`
 - 编译报错缺 `libopusenc-dev` → Ubuntu 20.04 源里没有，跳过即可
 
-### 6.4 安装项目 requirements.txt
+### 7.4 安装项目 requirements.txt
 
 ```bash
 cd ~/Echo-Mate/Demo/AIChat_demo/Server
@@ -283,13 +335,13 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 > 本仓库的 `requirements.txt` **已经是 UTF-8**，且里面容易冲突的 `torch` / `torchaudio` / `git+https://…PyOgg.git` 三行**已经预先注释好**，直接安装即可，不需要再手工改文件。
 
-### 6.5 安装 ffmpeg
+### 7.5 安装 ffmpeg
 
 ```bash
 sudo apt install -y ffmpeg
 ```
 
-### 6.6 验证所有 Python 依赖
+### 7.6 验证所有 Python 依赖
 
 ```bash
 python -c "import torch, funasr, dashscope, websockets, pyogg; print('Python deps OK')"
@@ -297,58 +349,6 @@ python -c "from pyogg import OpusEncoder; print('OpusEncoder OK')"
 ```
 
 全部输出 OK 即安装成功。
-
----
-
-## 七、获取项目源码
-
-### 7.1 安装 git-lfs
-
-```bash
-sudo apt install -y git-lfs
-git lfs install
-```
-
-### 7.2 克隆仓库
-
-> ⚠️ **目标目录必须写成 `~/Echo-Mate/Demo`** —— 本文档后续所有路径都基于它。
-
-```bash
-git clone https://github.com/tiezu2/Norma.git ~/Echo-Mate/Demo
-cd ~/Echo-Mate/Demo
-```
-
-### 7.3 拉取子模块
-
-```bash
-git submodule update --init --recursive
-```
-
-5 个子模块（自动从官方源拉取，约 900 MB）：
-
-| 路径 | 来源 |
-|---|---|
-| `AIChat_demo/Server/models/FunAudioLLM/SenseVoice` | github.com/FunAudioLLM/SenseVoice |
-| `.../iic/speech_fsmn_vad_zh-cn-16k-common-pytorch` | modelscope.cn |
-| `.../iic/SenseVoiceSmall` | modelscope.cn |
-| `DeskBot_demo/lvgl` | github.com/lvgl/lvgl（`release/v9.2`） |
-| `rkmpi_demos` | github.com/LuckfoxTECH/luckfox_pico_rkmpi_example |
-
-### 7.4 拉取 LFS 大文件
-
-```bash
-git lfs pull
-git submodule foreach --recursive 'git lfs pull'
-```
-
-### 7.5 验证项目结构
-
-```bash
-ls ~/Echo-Mate/Demo/
-ls ~/Echo-Mate/Demo/AIChat_demo/
-```
-
-应看到 `AIChat_demo/`、`DeskBot_demo/`、`yolov5_demo/`、`rkmpi_demos/` 等。
 
 ---
 
@@ -408,57 +408,67 @@ aliyun_api_key=你的阿里云Key             # 按需
 ```
 
 > `system_para.conf` 含密钥，已退出 git 跟踪并被忽略，本地怎么改都不会污染仓库。
+>
+> ⚠️ **必须在第一次编译之前创建它**（执行上面的 `cp`）——`utils/system_para.conf` 缺失时，
+> `make` 会在「复制配置到 `bin/`」这一步直接报错。
 
-### 9.2 同步到 bin/
+### 9.2 bin/ 下的副本是编译自动生成的（**不要手改**）
 
-PC 预览运行时读取的是 `bin/` 下的配置副本：
+PC 预览运行时读取的是 `bin/system_para.conf`，但 **`bin/` 是构建产物目录**（已被 `.gitignore` 忽略）。
+该文件由编译过程自动从 `utils/system_para.conf` 复制生成（见 `DeskBot_demo/CMakeLists.txt` 第 69–71 行，
+`POST_BUILD` + `copy_if_different`）。
 
-```bash
-sed -i 's|AIChat_server_url=.*|AIChat_server_url=127.0.0.1|' \
-  ~/Echo-Mate/Demo/DeskBot_demo/bin/system_para.conf
-```
+所以规则只有一条：**只改 `utils/system_para.conf`，不要手动改 `bin/` 下的副本** ——
+手改 `bin/` 的内容会在下一次编译时被覆盖丢失。
+
+> ⚠️ 若你还没编译过，`bin/system_para.conf` **此时并不存在**，这是正常的；编译一次后它才会出现。
 
 ### 9.3 验证
+
+```bash
+grep AIChat_server_url ~/Echo-Mate/Demo/DeskBot_demo/utils/system_para.conf
+```
+
+应输出 `AIChat_server_url=127.0.0.1`。
+
+编译完成后，可再确认 `bin/` 下的副本已自动同步：
 
 ```bash
 grep AIChat_server_url ~/Echo-Mate/Demo/DeskBot_demo/bin/system_para.conf
 ```
 
-应输出 `AIChat_server_url=127.0.0.1`。
-
 ---
 
 ## 十、PC 预览编译与运行
 
-### 10.1 修改 lv_conf.h 启用 SDL
+### 10.1 打开 PC 仿真开关（**只改一个文件**）
 
-PC 上没有 framebuffer，要把 LVGL 的显示后端从 `fbdev` 切到 `SDL`：
+PC 上没有 framebuffer，要把 LVGL 的显示后端从 `fbdev` 切到 `SDL`。
+
+**只需修改 `conf/dev_conf.h` 中的 `LV_USE_SIMULATOR`（`0` → `1`）**：
 
 ```bash
 cd ~/Echo-Mate/Demo/DeskBot_demo
-
-# 先看当前状态
-grep -nE "LV_USE_SDL|LV_USE_LINUX_FBDEV|LV_USE_EVDEV" lv_conf.h
-
-# 三行改成下面这样（若已经是就跳过）
-sed -i 's|^// *#define LV_USE_SDL.*|#define LV_USE_SDL 1|' lv_conf.h
-sed -i 's|^// *#define LV_USE_LINUX_FBDEV.*|#define LV_USE_LINUX_FBDEV 0|' lv_conf.h
-sed -i 's|^// *#define LV_USE_EVDEV.*|#define LV_USE_EVDEV 0|' lv_conf.h
+sed -i 's|^#define LV_USE_SIMULATOR 0|#define LV_USE_SIMULATOR 1|' conf/dev_conf.h
 ```
 
 验证：
 
 ```bash
-grep -nE "^#define LV_USE_SDL|^#define LV_USE_LINUX_FBDEV|^#define LV_USE_EVDEV" lv_conf.h
+grep -n "LV_USE_SIMULATOR" conf/dev_conf.h
 ```
 
-应输出：
+应输出 `#define LV_USE_SIMULATOR 1`。
 
-```
-#define LV_USE_SDL 1
-#define LV_USE_LINUX_FBDEV 0
-#define LV_USE_EVDEV 0
-```
+> **为什么不用再改 `lv_conf.h`？**
+> `lv_conf.h` 第 50 行 `#include "conf/dev_conf.h"` 会先引入这个开关，并据此推导出三个后端宏
+> （`LV_USE_SDL` / `LV_USE_LINUX_FBDEV` / `LV_USE_EVDEV`，见 `conf/dev_conf.h` 第 10–18 行）。
+> `lv_conf.h` 后面虽然也定义了同名宏（第 967 / 997 / 1033 行），但本仓库已为这三行加了 `#ifndef` 保护，
+> 因此**不会覆盖** `dev_conf.h` 的结论 —— 这就是"只改一处就够"的原因。
+>
+> 若你拿到的是别的分支、改 `dev_conf.h` 不生效，说明那三行没有 `#ifndef` 保护。
+> 此时才需要继续手改 `lv_conf.h`：第 967 行 `LV_USE_SDL 0 → 1`，第 997 行 `LV_USE_LINUX_FBDEV 1 → 0`，
+> 第 1033 行 `LV_USE_EVDEV 1 → 0`。
 
 ### 10.2 编译 PC 预览
 
@@ -658,8 +668,10 @@ cd ~/Echo-Mate/Demo/DeskBot_demo/utils
 cp system_para.conf.example system_para.conf
 vim system_para.conf                 # AIChat_server_url=127.0.0.1
 
-# 6. PC 预览编译
-cd ~/Echo-Mate/Demo/DeskBot_demo && rm -rf build && mkdir build && cd build
+# 6. PC 预览编译（先把仿真开关打开）
+cd ~/Echo-Mate/Demo/DeskBot_demo
+sed -i 's|^#define LV_USE_SIMULATOR 0|#define LV_USE_SIMULATOR 1|' conf/dev_conf.h
+rm -rf build && mkdir build && cd build
 cmake .. && make -j$(nproc)
 
 # 7. 启动服务端
