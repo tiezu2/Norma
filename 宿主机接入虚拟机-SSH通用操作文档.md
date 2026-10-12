@@ -192,6 +192,65 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub VM_USER@VM_IP
 
 中途需要输一次虚拟机密码，成功会输出 `Number of key(s) added: 1`。
 
+> **Windows 用户注意：`ssh-copy-id` 不在 Windows 自带工具里。**
+>
+> Windows 10 / 11 自带的 OpenSSH 客户端只提供 9 个程序：`ssh`、`scp`、`sftp`、`ssh-add`、`ssh-agent`、`ssh-keygen`、`ssh-keyscan`、`ssh-pkcs11-helper`、`ssh-sk-helper` —— **没有 `ssh-copy-id`**。
+> 这不是"没装全"，而是**上游的 `ssh-copy-id` 本身就是一个 POSIX shell 脚本**（不是可执行程序）；微软的 Windows 移植版只编译了 C 程序、没有携带脚本。属**结构性缺失，后续 Windows 更新也不会补上**。
+>
+> 所以 Windows 上想用方式 A，得先解决"这个工具从哪来"。三条路，按省事程度排列：
+
+| 途径 | 做什么 | 装好后 `ssh-copy-id` 在哪 |
+|---|---|---|
+| **① 装 Git for Windows**（推荐） | 它自带真正的 `ssh-copy-id` | `C:\Program Files\Git\usr\bin\ssh-copy-id` |
+| **② 装 WSL**（Windows 10 2004+ / 11） | 用 WSL 里的 Linux 版 | WSL 内 `/usr/bin/ssh-copy-id` |
+| **③ 什么都不装** | 跳过方式 A，直接用下面的**方式 B** | —— |
+
+**① 下载 Git for Windows（三选一）**
+
+- **一行命令**（最省事；Windows 11 与较新的 Windows 10 自带 `winget`）：
+
+```powershell
+winget install --id Git.Git -e --source winget
+```
+
+> 若提示 `winget` 不是可识别的命令 → 到 Microsoft Store 搜索安装「**应用安装程序 / App Installer**」，然后重试。
+
+- **官网下载**：打开 <https://git-scm.com/download/win> ，点 `Git for Windows/x64 Setup`（约 60 MB）。
+- **国内镜像**（官网慢时用）：清华镜像站 <https://mirrors.tuna.tsinghua.edu.cn/github-release/git-for-windows/git/LatestRelease/> ，下载 `Git-*-64-bit.exe`。
+
+安装过程**一路默认（Next）即可**，不用改任何选项。
+
+**装好后怎么执行方式 A（两个入口，任选一个）**
+
+入口一 —— 开始菜单搜索并打开 **Git Bash**（里面的 `~` 自动指向 `C:\Users\<你的用户名>`，与 3.1 生成的密钥位置一致）：
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub VM_USER@VM_IP
+```
+
+入口二 —— 不想另开 Git Bash 窗口，直接在 **PowerShell** 里调用它：
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc 'ssh-copy-id -i ~/.ssh/id_ed25519.pub VM_USER@VM_IP'
+```
+
+> 验证是否装好：在 Git Bash 里执行 `command -v ssh-copy-id`，正常输出 `/usr/bin/ssh-copy-id`。
+> 若 Git 装在别的路径，把上面的 `C:\Program Files\Git\bin\bash.exe` 换成实际路径（默认安装就是这一个）。
+
+**② WSL 的方式**
+
+```powershell
+wsl --install
+```
+
+首次安装需重启一次；重启后进入 Ubuntu，执行（注意 **WSL 里的 `~` 是 Linux 家目录，不是 Windows 用户目录**，必须写 Windows 侧密钥的完整路径）：
+
+```bash
+ssh-copy-id -i /mnt/c/Users/<你的用户名>/.ssh/id_ed25519.pub VM_USER@VM_IP
+```
+
+> ⚠️ **不要装 Microsoft 的 Win32-OpenSSH 独立版**（`winget install Microsoft.OpenSSH.Beta`）—— 它和系统自带版一样**不含** `ssh-copy-id`，装了也解决不了这个问题。
+
 **方式 B：手工追加（Windows 无此命令，或想完全掌控时）**
 
 Windows PowerShell 一行完成：
@@ -442,7 +501,8 @@ ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"
 # ── 步骤 3：安装公钥 ──
 # macOS / Linux：
 ssh-copy-id -i ~/.ssh/id_ed25519.pub $VM_USER@$VM_IP
-# Windows（PowerShell）：见正文 3.2 方式 B
+# Windows：PowerShell 用正文 3.2 方式 B（无需任何额外工具）
+#          想用 ssh-copy-id 的，先看正文 3.2 的「Windows 用户注意」
 
 # ── 步骤 4：验证免密登录 ──
 ssh $VM_USER@$VM_IP
