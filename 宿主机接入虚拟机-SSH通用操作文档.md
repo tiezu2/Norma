@@ -5,13 +5,26 @@
 >
 > **本文目标**：照着做，能从「密码登录」一路做到「免密 + 别名 + 可被脚本和自动化工具稳定调用」。
 >
-> **阅读方式**：全文只用到三个占位符，替换成你自己的值即可。
+> **阅读方式**：全文只用到三个占位符。**动手前先把它们落到你的 shell 里并回显确认**，之后所有命令直接使用。
+> 下表的"示例"只是格式示意，**不是你的值**。
 >
-> | 占位符 | 含义 | 示例 |
+> | 占位符 | 含义 | 示例（**非你的环境**） |
 > |---|---|---|
-> | `VM_USER` | 虚拟机里的登录用户名 | `xuanyue` |
-> | `VM_IP` | 虚拟机的 IP 地址 | `192.168.17.128` |
+> | `VM_USER` | 虚拟机里的登录用户名 | `youruser` |
+> | `VM_IP` | 虚拟机的 IP 地址 | `192.168.0.100` |
 > | `VM_ALIAS` | 你给这台虚拟机起的 SSH 别名 | `myvm` |
+>
+> ```bash
+> # ===== 动手前必做：先替换这三个值，并回显确认 =====
+> VM_USER=youruser          # ← 改成你的虚拟机用户名
+> VM_IP=192.168.0.100       # ← 改成你的虚拟机 IP（查法见 §1.4）
+> VM_ALIAS=myvm             # ← 自己起个别名
+> echo "即将操作：$VM_USER@$VM_IP （别名 $VM_ALIAS）"   # 确认无误再继续
+> # ================================================
+> ```
+>
+> ⚠️ 本文**正文示例已统一为中性值**（`192.168.0.100` / `youruser` / `myvm`），与任何人的真实环境都不重合；
+> 作者本机的真实快照在附 B，**那份切勿照抄**。
 
 ---
 
@@ -132,13 +145,13 @@ arp -a | grep 192.168.
 
 ```bash
 ssh VM_USER@VM_IP
-# 例： ssh xuanyue@192.168.17.128
+# 例： ssh youruser@192.168.0.100
 ```
 
 首次连接会出现：
 
 ```
-The authenticity of host '192.168.17.128' can't be established.
+The authenticity of host '192.168.0.100' can't be established.
 ED25519 key fingerprint is SHA256:xxxxxxxx.
 Are you sure you want to continue connecting (yes/no/[fingerprint])?
 ```
@@ -253,12 +266,37 @@ ssh-copy-id -i /mnt/c/Users/<你的用户名>/.ssh/id_ed25519.pub VM_USER@VM_IP
 
 **方式 B：手工追加（Windows 无此命令，或想完全掌控时）**
 
-Windows PowerShell 一行完成：
+> **务必分 4 条独立执行。** 把多行一次性粘进 PowerShell 会触发**续行模式**（提示符变成 `>>`），
+> 变量赋值可能晚于使用，`$pub` 会静默展开为空 —— 而命令**照样"成功"返回**。
+
+**[宿主机 · PowerShell] 第 1 步：生成密钥（已有可跳过）**
+
+```powershell
+ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"
+```
+
+**[宿主机 · PowerShell] 第 2 步：读出公钥、清行尾，并自检**
 
 ```powershell
 $pub = (Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub" -Raw).Trim() -replace "`r",""
-ssh VM_USER@VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$pub' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && echo INSTALLED"
+$pub.Substring(0, 40)    # 自检：必须打印 ssh-ed25519 AAAA… 开头的一串
+                         # 打印为空 / 报错 → 停，先把上一步做完
 ```
+
+**[宿主机 · PowerShell] 第 3 步：写入虚拟机**
+
+```powershell
+ssh VM_USER@VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' '$pub' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+**[宿主机] 第 4 步：验证（见 §3.3 的唯一判据）**
+
+```bash
+ssh -o BatchMode=yes VM_USER@VM_IP "wc -l ~/.ssh/authorized_keys; tail -1 ~/.ssh/authorized_keys"
+```
+
+> ⚠️ **不要用"命令跑完没报错"当成功判据**。原文档结尾的 `&& echo INSTALLED` 是**无条件打印**的 ——
+> 只要 ssh 连得上（密码对）就会打印，**与密钥是否真的写进去毫无关系**，是典型的"失败伪装成成功"。
 
 Linux / macOS 等价写法：
 
@@ -269,15 +307,32 @@ cat ~/.ssh/id_ed25519.pub | ssh VM_USER@VM_IP \
 
 也可以最原始的方式：把公钥内容复制到剪贴板，在虚拟机里手工粘贴到 `~/.ssh/authorized_keys`。
 
-> ⚠️ **最常见的坑**：公钥里**不能带回车符 `\r`**。从 Windows 复制粘贴、或经某些编辑器保存时极易带上，结果是**登录静默失败、只报 `Permission denied`**，没有任何其他提示。方式 B 中的 `-replace "`r",""` 就是在处理这个问题。
+> ⚠️ **最常见的坑（Windows 上是"默认发生"，不是"万一"）**：Windows 的 `ssh-keygen`（以及记事本等编辑器）
+> 保存 `.pub` 时**默认就是 CRLF 行尾**。这样的公钥写进 `authorized_keys` 后，整行尾部多一个 `\r`，
+> 结果是**登录静默失败、只报 `Permission denied`**，没有任何其他提示。
+> 方式 B 里的 `-replace "`r",""` 就是在清理它；手工粘贴的请自查：
+>
+> ```bash
+> cat -A ~/.ssh/id_ed25519.pub     # 行尾出现 ^M$ 即带 \r
+> ```
+>
+> 清理：`tr -d '\r' < id_ed25519.pub > tmp && mv tmp id_ed25519.pub`（或在 PowerShell 里用上面的 `-replace`）
 
-### 3.3 验证
+### 3.3 验证（**唯一可靠的判据**）
+
+不要用"命令没报错"当成功判据，用这条：
 
 ```bash
-ssh VM_USER@VM_IP
+ssh -o BatchMode=yes VM_USER@VM_IP "wc -l ~/.ssh/authorized_keys; tail -1 ~/.ssh/authorized_keys"
 ```
 
-**不再询问密码**即表示成功。
+判读：
+
+- `wc -l` 输出 **`1`**，且 `tail -1` 打印一行以 `ssh-ed25519 ` 开头的完整公钥 → ✅ 装好了。
+- 打印**空行**、行数 **> 1**、或开头不是 `ssh-ed25519` → ❌ 没装好（见 3.4）。
+- `-o BatchMode=yes` 的作用：禁止一切交互。若它还能连上，说明走的是**密钥**而不是密码 —— 这才是"免密"的真正证据。
+
+也可以直接 `ssh VM_USER@VM_IP` —— **不再询问密码**即成功。
 
 ### 3.4 若仍要求密码 —— 按此顺序排查
 
@@ -318,8 +373,8 @@ sudo tail -50 /var/log/auth.log
 
 ```
 Host myvm
-  HostName 192.168.17.128
-  User xuanyue
+  HostName 192.168.0.100
+  User youruser
   Port 22
   IdentityFile ~/.ssh/id_ed25519
   ServerAliveInterval 30
@@ -416,10 +471,10 @@ network:
   ethernets:
     ens33:
       dhcp4: no
-      addresses: [192.168.17.128/24]
-      gateway4: 192.168.17.2
+      addresses: [192.168.0.100/24]
+      gateway4: 192.168.0.2
       nameservers:
-        addresses: [192.168.17.2]
+        addresses: [192.168.0.2]
 EOF
 sudo netplan apply
 ```
@@ -428,7 +483,7 @@ sudo netplan apply
 
 ### 方式 C：宿主机 hosts 别名（治标）
 
-在宿主机 hosts 文件里加 `192.168.17.128 myserver`，配置里 `HostName myserver`。IP 变了仍需改 hosts，所以不如 A / B 彻底。
+在宿主机 hosts 文件里加 `192.168.0.100 myserver`，配置里 `HostName myserver`。IP 变了仍需改 hosts，所以不如 A / B 彻底。
 
 ---
 
@@ -460,6 +515,8 @@ sudo netplan apply
 | `Connection timed out` | 虚拟机没开机 / IP 变了 / 不在同一网段 | 开机；`hostname -I` 重查；确认网络模式（第 8 节） |
 | `Connection refused` | 虚拟机在运行但未监听 22 | `sudo systemctl start ssh`；`ss -tlnp \| grep :22` |
 | `Permission denied (publickey)` | 公钥未装成功 / 带 `\r` / 权限过松 | 见 3.4 的完整排查流程 |
+| `Could not resolve hostname xxx` | 占位符 `VM_IP` 没替换 / 拼错（连接根本没发出） | 回文首把三个变量落到 shell 并回显确认 |
+| 免密失败，但 `authorized_keys` 内容"看着像 key" | 写进去的是**私钥**（或其 base64）而非公钥 | 公钥必须**单行、以 `ssh-ed25519` 开头**；覆盖写入后按 §3.3 验证 |
 | `Permission denied, please try again` | 密码错误 / 密码登录被禁用 | 重输密码；或临时开 `PasswordAuthentication yes` |
 | 首次连接卡在 `yes/no` 等待 | 主机指纹未确认 | 输 `yes`；自动化场景需先手动连一次 |
 | `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!` | 虚拟机重装过，或 IP 被另一台机器占用 | `ssh-keygen -R VM_IP` 删除旧指纹后重连 |
@@ -486,8 +543,8 @@ sudo netplan apply
 
 ```bash
 # ================= 只改这三个 =================
-VM_USER=xuanyue
-VM_IP=192.168.17.128
+VM_USER=youruser
+VM_IP=192.168.0.100
 VM_ALIAS=myvm
 # ==============================================
 
@@ -498,14 +555,16 @@ hostname -I                     # 记下输出的 IP，填回 VM_IP
 # ── 步骤 2：在【宿主机】生成密钥（已有可跳过）──
 ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"
 
-# ── 步骤 3：安装公钥 ──
+# ── 步骤 3：安装公钥（选一条）──
 # macOS / Linux：
 ssh-copy-id -i ~/.ssh/id_ed25519.pub $VM_USER@$VM_IP
-# Windows：PowerShell 用正文 3.2 方式 B（无需任何额外工具）
-#          想用 ssh-copy-id 的，先看正文 3.2 的「Windows 用户注意」
+# Windows（PowerShell，先分步取出公钥；详见正文 3.2 方式 B）：
+#   $pub = (Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub" -Raw).Trim() -replace "`r",""
+#   ssh $VM_USER@$VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' '$pub' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 
-# ── 步骤 4：验证免密登录 ──
-ssh $VM_USER@$VM_IP
+# ── 步骤 4：验证免密（唯一可靠判据：BatchMode 下不回落到密码 = 密钥生效）──
+ssh -o BatchMode=yes $VM_USER@$VM_IP "wc -l ~/.ssh/authorized_keys; tail -1 ~/.ssh/authorized_keys"
+#   期望：1 行，且以 ssh-ed25519 开头。若打印空行 / 报错，回正文 3.4 排查。
 
 # ── 步骤 5：写别名 ──
 #   macOS / Linux 配置文件： ~/.ssh/config
@@ -529,9 +588,12 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 $VM_ALIAS "命令"   # 自动化调用
 
 ---
 
-## 附 B：一个已跑通的参考实例
+## 附 B：一个已跑通的参考实例（**⚠️ 作者本机快照，切勿照抄**）
 
-供对照参考，可直接删除。
+> ⚠️ **本节全部是作者本机环境的真实值**：网段 `192.168.17.0/24`、登录用户 `xuanyue`、共享目录 `E:\Desktop\Echo`。
+> **这些值与你的环境必然不同。** 把本节的 IP 直接抄进命令 → `Connection timed out`，
+> 而这个报错会把你误导到"网络 / 防火墙"方向，白白排查很久。
+> 本节只用于**对照理解结构**，不要复制其中的地址与用户名。
 
 | 项 | 值 |
 |---|---|
