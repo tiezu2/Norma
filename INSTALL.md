@@ -131,7 +131,12 @@ sudo apt update
 ```bash
 sudo apt update
 sudo apt install -y open-vm-tools open-vm-tools-desktop
-立即重启虚拟机
+```
+
+装完后**立即重启虚拟机**（这是说明，不是命令）：
+
+```bash
+sudo reboot
 ```
 
 重启后支持：Windows 与 Ubuntu 之间复制粘贴、拖拽文件、分辨率自动适配。
@@ -156,13 +161,58 @@ sudo apt install -y git curl wget unzip vim build-essential cmake
 sudo apt install -y python3-pip python3-venv pkg-config bc rsync cpio
 ```
 
+> ⚠️ **若报「无法获得锁 `/var/lib/dpkg/lock-frontend`」**：说明系统自动更新（`unattended-upgrades` 等）正占用 apt。
+> 此时**这一整批 `apt install` 会全部失败 —— 一个包都不会装上**，而本步骤不会立刻报错，
+> 你会带着"空的工具链"一直走到第十章编译才暴露。处置：
+>
+> ```bash
+> sudo systemctl disable --now unattended-upgrades apt-daily.timer apt-daily-upgrade.timer
+> ```
+>
+> 确认锁空闲后再重跑本节命令。**重启虚拟机不能解决** —— 反而会让定时任务补跑一轮。
+
+**本节必做：安装结果自检。** `apt install` 是"整批原子"的：其中任何一个包出问题，整条命令都不会装成任何包，
+且几乎不留显眼报错。装完必须逐项确认：
+
+```bash
+for c in git curl wget unzip vim make gcc g++ cmake pkg-config bc rsync cpio python3; do
+  printf '%-10s %s\n' "$c" "$(command -v "$c" || echo '❌ MISSING')"
+done
+```
+
+> **`gcc` ≠ `g++`**：Ubuntu 上这是两个独立包。`gcc` 只编 C，**C++ 必须 `g++`**。
+> 若只跟着 apt 的 `Command not found` 提示去装 `cmake`（它顺带带来 `gcc`/`make`），
+> 会产生"工具链已经齐了"的错觉，直到第十章报 `No CMAKE_CXX_COMPILER could be found` 才暴露。
+> 本节的 `build-essential` 同时包含 `gcc` 与 `g++` —— **自检里 `g++` 有输出，才算过关**。
+
 ### 4.3 安装系统音频 / 图形 / 网络库
 
 ```bash
 sudo apt install -y ffmpeg portaudio19-dev libogg-dev libsndfile1 \
   libsdl2-dev libsdl2-image-dev libjson-c-dev libjsoncpp-dev \
   libboost-dev libdrm-dev libopus-dev libasound2-dev \
-  libopenblas0 libopenblas-dev
+  libopenblas0 libopenblas-dev \
+  libcurl4-openssl-dev libwebsocketpp-dev
+```
+
+> ⚠️ **最后两个包是编译阶段的硬依赖，不能省**：
+>
+> | 包 | 谁需要它 | 为什么只装命令行工具不行 |
+> |---|---|---|
+> | `libcurl4-openssl-dev` | `gui_app/CMakeLists.txt` 的 `find_package(CURL REQUIRED)`（天气页） | 命令行工具 `curl` **不提供头文件、也不提供 `libcurl.so`** |
+> | `libwebsocketpp-dev` | `AIChat_demo/Client/CMakeLists.txt` 的 `find_package(WEBSOCKETPP REQUIRED)` | 仓库不自带 websocketpp，只有 `FindWEBSOCKETPP.cmake` |
+>
+> 不装这两个，编译时必然连撞两次 `Could NOT find CURL` / `Could NOT find WEBSOCKETPP`。
+> 不想用 apt 装 websocketpp 的，也可以：
+> `git clone https://github.com/zaphoyd/websocketpp.git ~/websocketpp`（`FindWEBSOCKETPP.cmake` 会去 `$HOME/websocketpp` 找）。
+
+**本节必做：头文件自检。** 只看"命令没报错"不算数，要看头文件在不在：
+
+```bash
+for h in /usr/include/x86_64-linux-gnu/curl/curl.h /usr/include/websocketpp/client.hpp \
+         /usr/include/json-c/json.h /usr/include/SDL2/SDL.h /usr/include/opus/opus.h; do
+  [ -f "$h" ] && echo "✅ $h" || echo "❌ MISSING $h"
+done
 ```
 
 ### 4.4 常用清理
@@ -305,26 +355,29 @@ pip install torch torchvision torchaudio \
 python -c "import torch; print('torch', torch.__version__)"
 ```
 
-### 7.3 安装 PyOgg（源码编译）
+### 7.3 安装 PyOgg（**用仓库内置源码，不需联网**）
 
-PyPI 上的 `pyogg` 不含 `OpusEncoder`，需要从源码编译。
+PyPI 上的 `pyogg` 不含 `OpusEncoder`，必须从源码编译。
+**本仓库已内置 PyOgg 源码**（`AIChat_demo/Server/PyOgg/`，含 `setup.py`），
+直接用本地目录安装即可 —— 不需要再 clone，也就避开了 `ghproxy` / GitHub 的网络抖动：
 
 ```bash
-cd ~
-git clone https://ghproxy.net/https://github.com/TeamPyOgg/PyOgg.git
-cd PyOgg
+conda activate echo_env
+cd ~/Echo-Mate/Demo/AIChat_demo/Server/PyOgg
 pip install . -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-验证：
+验证（**必须看到 `PyOgg OK` 才算过**）：
 
 ```bash
 python -c "from pyogg import OpusEncoder, OpusDecoder; print('PyOgg OK')"
 ```
 
 常见问题：
-- `git clone` 卡住 → 换 `https://gitclone.com/github.com/TeamPyOgg/PyOgg.git`
-- 编译报错缺 `libopusenc-dev` → Ubuntu 20.04 源里没有，跳过即可
+- 编译报错缺 `libopusenc-dev` → Ubuntu 20.04 源里没有，**跳过即可**（不影响 `OpusEncoder` / `OpusDecoder`；系统 `libopus` 已由 §4.3 的 `libopus-dev` 满足）
+- 若报缺 `opusfile.h` → `sudo apt install -y libopusfile-dev`
+- 若仓库被裁掉了 `PyOgg/` 目录，再退回官方源：
+  `git clone https://ghproxy.net/https://github.com/TeamPyOgg/PyOgg.git`（卡住就换 `https://gitclone.com/github.com/TeamPyOgg/PyOgg.git`）
 
 ### 7.4 安装项目 requirements.txt
 
@@ -334,6 +387,13 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
 > 本仓库的 `requirements.txt` **已经是 UTF-8**，且里面容易冲突的 `torch` / `torchaudio` / `git+https://…PyOgg.git` 三行**已经预先注释好**，直接安装即可，不需要再手工改文件。
+>
+> ⚠️ **`-i` 不能省**。走默认国际 PyPI 时，国内链路抖动会让 pip 抓不到索引，报
+> `Could not find a version that satisfies the requirement modelscope (from versions: none)` ——
+> 这是**索引抓取失败，不是"没有这个版本"**（`pip index versions modelscope` 能列出一长串即为反证）。遇到就直接带 `-i` 重跑本条。
+>
+> ⚠️ **若这条 `pip install -r` 中途失败**，后面的包会全部没装上，表现为启动服务端时一个接一个报
+> `ModuleNotFoundError`。**不要逐条 `pip install` 打地鼠 —— 直接重跑整条命令**（幂等）。
 
 ### 7.5 安装 ffmpeg
 
@@ -513,6 +573,14 @@ pactl list sources short
 pactl list sinks short
 ```
 
+> **拿名字的方法**：`pactl list sources short` / `sinks short` 每行格式为 `序号 名字 驱动 状态` —— **第 2 列就是名字**（如 `alsa_input.pci-0000_02_02.0.analog-stereo`），下文 `<...>` 处填它。
+>
+> ⚠️ **PulseAudio 的 `.monitor` 源是"输出回环"，不是麦克风**。若默认 source 指向 `.monitor`，
+> 不播放时录到的就是**纯静音** —— 现象与"麦克风坏了"完全一样。
+> 判据：`pactl info | grep -i 'Default Source'`，期望是 `alsa_input...`；不对就 `pactl set-default-source <真麦克风名>`。
+>
+> 另：`SUSPENDED` 是空闲挂起态，**不是故障**。
+
 ### 11.2 方案 A：使用 USB 声卡（推荐）
 
 如果内置声卡驱动有问题，USB 声卡即插即用。
@@ -595,6 +663,8 @@ funasr version: ...
 | 问题 | 原因 | 解决 |
 |---|---|---|
 | `ModuleNotFoundError: No module named 'torch'` | 不在 echo_env 环境 | `conda activate echo_env` |
+| `ModuleNotFoundError: No module named 'pyogg'` | §7.3 的 PyOgg 没装 | 回 §7.3，用仓库内置源码装 |
+| `ModuleNotFoundError: No module named 'websockets'` / `'dashscope'` … | §7.4 的 `pip install -r` 中途断了，后续包全没进 | 重跑 §7.4 整条命令（幂等），别逐条补 |
 | `InputRequired: apikey is required!` | 密钥没填 / 没生效 | 检查 `config/local_secrets.py` 的 `DASHSCOPE_API_KEY` |
 | `OSError: [Errno 98] address already in use` | 8000 端口被旧进程占用 | `fuser -k 8000/tcp` 后重新启动 |
 | `Client is idle, resetting services` 循环 | PC 预览没启动 | 按第十章启动 PC 预览 |
@@ -656,8 +726,11 @@ cd ~/Echo-Mate/Demo && git submodule update --init --recursive
 conda create -n echo_env python=3.10 -y && conda activate echo_env
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
-# 3. 依赖
-cd ~/Echo-Mate/Demo/AIChat_demo/Server && pip install -r requirements.txt
+# 3. 依赖（-i 清华源不能省；PyOgg 用仓库内置源码单独装）
+cd ~/Echo-Mate/Demo/AIChat_demo/Server
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install ./PyOgg -i https://pypi.tuna.tsinghua.edu.cn/simple
+python -c "import torch, funasr, dashscope, websockets, pyogg; print('deps OK')"   # 必须打印 deps OK
 
 # 4. 填密钥
 cp config/local_secrets.py.example config/local_secrets.py
@@ -671,6 +744,7 @@ vim system_para.conf                 # AIChat_server_url=127.0.0.1
 # 6. PC 预览编译（先把仿真开关打开）
 cd ~/Echo-Mate/Demo/DeskBot_demo
 sed -i 's|^#define LV_USE_SIMULATOR 0|#define LV_USE_SIMULATOR 1|' conf/dev_conf.h
+grep -n "LV_USE_SIMULATOR" conf/dev_conf.h   # 必须看到 #define LV_USE_SIMULATOR 1；不是就别往下走
 rm -rf build && mkdir build && cd build
 cmake .. && make -j$(nproc)
 
